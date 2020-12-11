@@ -1,32 +1,34 @@
 <template>
   <div class="timer">
     <span style="margin-right: 15px">
-      Game Status: {{ play ? 'start' : 'stop'}}
+      Game Status:
+      <span v-if="play" style="color: green;">start</span>
+      <span v-else style="color: red;">stop</span>
     </span>
     <span class="timer__value" style="margin-right: 15px">
       Timer: {{ time }}
     </span>
-    <button @click="reloadGame">Restart Game</button>
+    <button @click="reloadGame">Stop and Restart Game</button>
   </div>
   <div class="pitnashki">
     <div class="pitnashki__wrapper">
-      <template v-for="item in squaresData" :key="item">
+      <template v-for="(item, index) in squares" :key="index">
         <span
           v-if="!item.active"
           class="pitnashki__item"
           :style="
             item.value
-            ? { left: item.position.x + 'px', top: item.position.y + 'px'}
-            : { left: item.position.x + 'px', top: item.position.y + 'px', background: '#a5a5a5'}
+            ? { left: item.position.x + 'px', top: item.position.y + 'px', zIndex: '1'}
+            : { left: item.position.x + 'px', top: item.position.y + 'px', background: '#a5a5a5', zIndex: '0'}
           "
         >
           {{ item.value }}
         </span>
         <span
           v-else
-          @click="emptySquare(item)"
+          @click="emptySquare(item.id)"
           class="pitnashki__item"
-          :style="{ left: item.position.x + 'px', top: item.position.y + 'px', cursor: 'pointer' }"
+          :style="{ left: item.position.x + 'px', top: item.position.y + 'px', zIndex: '1', cursor: 'pointer' }"
         >
           {{ item.value }}
         </span>
@@ -63,27 +65,10 @@ export default {
       ],
     }
   },
-  computed: {
-    squaresData() {
-      let data = this.randomicSquares()
-      data.map( i => i.active = false)
-
-      const emptySquareIdx = data.findIndex( i => i.value === null)
-
-      data[emptySquareIdx].enabled.forEach(squareId => {
-        data[squareId - 1].active = true
-      })
-
-      return data;
-    },
-  },
   methods: {
-
-    randomicSquares() {
-      if (this.play) return this.squares
-
+    randomicNumbers(value) {
       let arr = []
-      for (let i=0;i<16;++i) arr[i]=i;
+      for (let i=0; i < value; ++i) arr[i] = i;
       function shuffle(array) {
         let tmp, current, top = array.length;
         if(top) while(--top) {
@@ -94,36 +79,65 @@ export default {
         }
         return array;
       }
-
-      const nums = shuffle(arr);
-      nums.forEach((n, i) => {
-        if (n !== 0) this.squares[i].value = n
-        else this.squares[i].value = null
-      })
-
-      return this.squares
+      return shuffle(arr);
     },
 
-    emptySquare(square) {
-      let data = this.squaresData
-      square.enabled.forEach(squareId => {
-        if (data[squareId - 1].value !== null)
+    squaresData() {
+      this.squares.map( i => i.active = false)
+
+      if (!this.play) {
+        this.randomicNumbers(this.squares.length).forEach((n, i) => {
+          if (n !== 0) this.squares[i].value = n
+          else this.squares[i].value = null
+        })
+      }
+      
+      const emptySquareIdx = this.squares.findIndex(i => i.value === null)
+      this.squares[emptySquareIdx].enabled.forEach(squareId => {
+        const index = this.squares.findIndex(i => i.id === squareId)
+        this.squares[index].active = true
+      })
+    },
+
+    deleteSquareId(array, arrayId) {
+      const arrIdx = array.findIndex(i => i == arrayId)
+      if (!arrIdx) return
+      array.splice(arrIdx, 1)
+    },
+
+    emptySquare(id) {
+      const index = this.squares.findIndex(i => i.id === id)
+
+      this.squares[index].enabled.forEach(squareId => {
+
+        const enabledItemIdx = this.squares.findIndex(i => i.id === squareId)
+        if (this.squares[enabledItemIdx].value !== null)
           return
         
-        data[squareId - 1].value = square.value
-        data[square.id - 1].value = null
+        let copyCurrentSquare = { ...this.squares[index] }
+        let copyEmptySquare = { ...this.squares[enabledItemIdx] }
+
+        this.squares[enabledItemIdx].id = copyCurrentSquare.id
+        this.squares[enabledItemIdx].position = copyCurrentSquare.position
+        this.squares[enabledItemIdx].enabled = copyCurrentSquare.enabled
+
+        this.squares[index].id = copyEmptySquare.id
+        this.squares[index].position = copyEmptySquare.position
+        this.squares[index].enabled = copyEmptySquare.enabled
       })
 
-      if (this.play) return
-      this.gameTimer()
-      this.play = true
+      if (!this.play) {
+        this.play = true
+        this.gameTimer()
+      }
+      this.squaresData()
     },
 
     reloadGame() {
       this.gameTimer('stop')
       this.time = 0
       this.play = false
-      this.randomicSquares()
+      this.squaresData()
     },
 
     gameTimer(action) {
@@ -134,6 +148,9 @@ export default {
       this.interval = setInterval(()=>(this.time += 1), 1000)
     }
 
+  },
+  created() {
+    this.squaresData()
   }
 }
 </script>
@@ -163,4 +180,7 @@ export default {
     border: 2px solid #333
     border-radius: 6px
     background: #888
+    transition: all .25s linear
+    color: #eee
+    font-size: 50px
 </style>
