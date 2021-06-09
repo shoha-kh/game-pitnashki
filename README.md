@@ -1,5 +1,7 @@
 # game-pitnashki
 
+![alt text](https://github.com/k1ngzed/game-pitnashki/blob/master/src/assets/game-pitnashki.png?raw=true)
+
 ## Project setup
 
 ```
